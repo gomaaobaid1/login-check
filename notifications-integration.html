@@ -1,0 +1,303 @@
+<!-- ===== إضافة نظام الإشعارات المتكامل ===== -->
+<!-- ضع هذا الكود في الجزء قبل إغلاق الـ body -->
+
+<!-- مكتبة الإشعارات -->
+<script src="notifications-system.js"></script>
+
+<!-- ===== UI عناصر الإشعارات ===== -->
+
+<!-- زر مركز الإشعارات في الهيدر -->
+<style>
+  .notification-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+
+  .notification-icon-btn {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--dark);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: all var(--transition);
+  }
+
+  .notification-icon-btn:hover {
+    color: var(--primary);
+    transform: scale(1.1);
+  }
+</style>
+
+<!-- إضافة أيقونة الإشعارات في الهيدر -->
+<script>
+  // إضافة أيقونة الإشعارات بعد تحميل الصفحة
+  document.addEventListener('DOMContentLoaded', function() {
+    const userControls = document.querySelector('.user-controls');
+    if (userControls) {
+      const notifBtn = document.createElement('button');
+      notifBtn.className = 'notification-icon-btn';
+      notifBtn.onclick = showNotificationCenter;
+      notifBtn.id = 'notificationBtn';
+      notifBtn.innerHTML = '<i class="fas fa-bell"></i><span class="notification-badge" id="notificationBadge" style="display: none;">0</span>';
+      
+      // إدراج قبل avatar
+      userControls.insertBefore(notifBtn, userControls.querySelector('.user-avatar'));
+    }
+  }, { once: true });
+
+  // تحديث عدد الإشعارات غير المقروءة
+  function updateNotificationBadge() {
+    if (!currentUser) return;
+    const unread = allNotifications.filter(n => n.user_id === currentUser.id && !n.is_read).length;
+    const badge = document.getElementById('notificationBadge');
+    if (badge) {
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? 'flex' : 'none';
+    }
+  }
+
+  // تحديث badge عند إضافة إشعار جديد
+  const originalShowNotification = showNotificationToUser;
+  window.showNotificationToUser = function(notification) {
+    originalShowNotification(notification);
+    updateNotificationBadge();
+  };
+</script>
+
+<!-- ===== دمج الإشعارات مع نظام الطلبات =====-->
+<script>
+  // تعديل دالة updateOrderStatus لإرسال الإشعارات
+  const originalUpdateOrderStatus = window.updateOrderStatus;
+  window.updateOrderStatus = async function(newStatus) {
+    if (originalUpdateOrderStatus) {
+      const result = await originalUpdateOrderStatus(newStatus);
+      
+      // إرسال إشعار للعميل
+      if (currentOrderId && currentUser) {
+        const order = allOrders.find(o => o.id === currentOrderId);
+        if (order) {
+          await notifyOrderStatusChange(currentOrderId, newStatus, order);
+        }
+      }
+      
+      return result;
+    }
+  };
+
+  // تعديل دالة createInvoice لإرسال الإشعارات
+  const originalCreateInvoice = window.createInvoice;
+  window.createInvoice = async function() {
+    if (originalCreateInvoice) {
+      const result = await originalCreateInvoice();
+      
+      // إرسال إشعار بالفاتورة الجديدة
+      if (currentOrderId) {
+        const order = allOrders.find(o => o.id === currentOrderId);
+        if (order) {
+          const invoiceNumber = `#${Date.now().toString().slice(-6)}`;
+          await notifyInvoiceCreated(order.user_id, {
+            invoice_number: invoiceNumber,
+            total: order.service_price || 0
+          });
+        }
+      }
+      
+      return result;
+    }
+  };
+</script>
+
+<!-- ===== إضافة خيار الإشعارات في قائمة الأدمن ===== -->
+<script>
+  // إضافة عنصر جديد في قائمة الأدمن
+  document.addEventListener('DOMContentLoaded', function() {
+    const adminMenu = document.getElementById('adminDropdownMenu');
+    if (adminMenu) {
+      const newMenuItem = document.createElement('div');
+      newMenuItem.onclick = "showNotificationsControlPanel(); closeAdminMenu()";
+      newMenuItem.style.cssText = `padding:14px 20px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;`;
+      newMenuItem.innerHTML = `
+        <i class="fas fa-bell" style="color: #8b5cf6; font-size: 1.1rem;"></i>
+        <div style="flex: 1;">
+          <div style="font-weight: 600; color: var(--dark);">إدارة الإشعارات</div>
+          <div style="font-size: 0.8rem; color: var(--gray);">إرسال تنبيهات وتذكيرات</div>
+        </div>
+      `;
+      newMenuItem.onmouseover = function() { this.style.background = '#f8fafc'; };
+      newMenuItem.onmouseout = function() { this.style.background = 'white'; };
+      adminMenu.appendChild(newMenuItem);
+    }
+  }, { once: true });
+</script>
+
+<!-- ===== نموذج إرسال إشعارات مخصصة ===== -->
+<div id="customNotificationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+  <div style="background: white; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+    
+    <!-- الهيدر -->
+    <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 20px 25px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;"><i class="fas fa-envelope"></i> إرسال إشعار مخصص</h3>
+      <button onclick="document.getElementById('customNotificationModal').style.display='none';" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">×</button>
+    </div>
+
+    <!-- المحتوى -->
+    <div style="padding: 25px;">
+      <form id="customNotificationForm">
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dark);">المستخدم</label>
+          <select id="notifUserId" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: inherit; background: white;">
+            <option value="">-- اختر مستخدم --</option>
+            <option value="all">إرسال للجميع</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dark);">نوع الإشعار</label>
+          <select id="notifType" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: inherit; background: white;">
+            <option value="system">إخطار نظام</option>
+            <option value="promotion">ترويج</option>
+            <option value="maintenance">صيانة</option>
+            <option value="urgent">عاجل</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dark);">العنوان</label>
+          <input type="text" id="notifTitle" placeholder="مثال: تحديث جديد" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: inherit; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dark);">الرسالة</label>
+          <textarea id="notifMessage" placeholder="أدخل نص الإشعار..." style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: inherit; box-sizing: border-box; min-height: 100px; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" onclick="sendCustomNotification()" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #6d28d9);"><i class="fas fa-paper-plane"></i> إرسال</button>
+          <button type="button" onclick="document.getElementById('customNotificationModal').style.display='none';" class="btn-primary" style="flex: 1;"><i class="fas fa-times"></i> إلغاء</button>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<!-- دالة إرسال الإشعار المخصص -->
+<script>
+  async function sendCustomNotification() {
+    const userId = document.getElementById('notifUserId').value;
+    const type = document.getElementById('notifType').value;
+    const title = document.getElementById('notifTitle').value;
+    const message = document.getElementById('notifMessage').value;
+
+    if (!userId || !title || !message) {
+      showAlert('❌ يرجى ملء جميع الحقول المطلوبة', 'danger', 3000);
+      return;
+    }
+
+    const colorMap = {
+      system: '#3b82f6',
+      promotion: '#10b981',
+      maintenance: '#f59e0b',
+      urgent: '#ef4444'
+    };
+
+    const iconMap = {
+      system: 'fas fa-bell',
+      promotion: 'fas fa-gift',
+      maintenance: 'fas fa-tools',
+      urgent: 'fas fa-exclamation-circle'
+    };
+
+    try {
+      if (userId === 'all') {
+        const { data: users } = await sb.from('users').select('id');
+        let sent = 0;
+        for (const user of users || []) {
+          await sendNotificationToUser(user.id, {
+            type: type,
+            title: title,
+            message: message,
+            icon: iconMap[type],
+            color: colorMap[type]
+          });
+          sent++;
+        }
+        showAlert(`✅ تم إرسال الإشعار لـ ${sent} مستخدم`, 'success', 3000);
+      } else {
+        await sendNotificationToUser(parseInt(userId), {
+          type: type,
+          title: title,
+          message: message,
+          icon: iconMap[type],
+          color: colorMap[type]
+        });
+        showAlert('✅ تم إرسال الإشعار بنجاح', 'success', 3000);
+      }
+
+      document.getElementById('customNotificationModal').style.display = 'none';
+      document.getElementById('customNotificationForm').reset();
+    } catch(err) {
+      console.error('Error sending notification:', err);
+      showAlert('❌ حدث خطأ في إرسال الإشعار', 'danger', 3000);
+    }
+  }
+
+  // تحميل قائمة المستخدمين
+  document.addEventListener('DOMContentLoaded', async function() {
+    try {
+      const { data: users } = await sb.from('users').select('id, name');
+      const select = document.getElementById('notifUserId');
+      if (select && users) {
+        users.forEach(user => {
+          const option = document.createElement('option');
+          option.value = user.id;
+          option.textContent = user.name || `مستخدم #${user.id}`;
+          select.appendChild(option);
+        });
+      }
+    } catch(e) {}
+  }, { once: true });
+</script>
+
+<!-- ===== نموذج التذكيرات التلقائية ===== -->
+<script>
+  // جدولة التذكيرات التلقائية
+  function scheduleAutomaticReminders() {
+    // ال��حقق كل ساعة من الفواتير المتأخرة
+    setInterval(() => {
+      if (currentAdmin && notificationSettings.enableOverdueReminders) {
+        sendOverduePaymentReminders();
+      }
+    }, 60 * 60 * 1000); // كل ساعة
+  }
+
+  // بدء الجدولة عند دخول الأدمن
+  const originalShowAdminDashboard = window.showAdmin;
+  window.showAdmin = function() {
+    if (originalShowAdminDashboard) {
+      originalShowAdminDashboard();
+    }
+    scheduleAutomaticReminders();
+  };
+</script>
